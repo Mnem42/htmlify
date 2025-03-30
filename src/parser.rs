@@ -1,6 +1,6 @@
 use std::slice::Iter;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum MDItem{
     Heading(usize,String),
     Line(String)
@@ -11,27 +11,43 @@ pub struct Parser <'a>{
     contained: Iter<'a, String>
 }
 
-impl MDItem{
-    pub fn make_heading_from_str(input:&str) -> Option<MDItem>{
-        let chars = input.trim().chars();
-        let first_token = chars.take_while(|x| *x=='#').size_hint().0;
-        if first_token 
+fn check_if_heading(input:&str) -> Option<MDItem>{
+    // Skip all hashes and collect
+    let chars = input
+        .trim()
+        .chars()
+        .by_ref()
+        .skip_while(|x| *x=='#')
+        .collect::<String>();
+
+    // Find the length difference between both input and chars (after trimming
+    // both to remove meaningless spaces)
+    let length_difference = input.trim().len()-chars.trim().len();
+
+    // If there's no difference, it's not a heading
+    match length_difference{
+        0 => Some(MDItem::Line(input.trim().to_string())),
+        x => Some(MDItem::Heading(x-1,chars.trim().to_string()))
     }
 }
 
-impl <'a>Parser<'a>{
+impl Parser<'_>{
     pub fn new(input: &[String]) -> Parser<'_>{
         Parser{
             contained:input.iter()
         }
     }
+
+    fn parse(self, input: &str) -> Option<MDItem>{
+        check_if_heading(input)
+    }
 }
 
-impl <'a>Iterator for Parser<'a>{
+impl Iterator for Parser<'_>{
     type Item = MDItem;
 
     fn next(&mut self) -> Option<MDItem>{
         let item = self.contained.next()?;
-        MDItem::make_heading_from_str(item)
+        check_if_heading(item)
     }
 }
